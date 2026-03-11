@@ -1,0 +1,24 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< com.ems:EmployeeManagementSystem >------------------
+[INFO] Building Employee Management System 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ EmployeeManagementSystem ---
+[INFO] 
+[INFO] --- cargo:1.10.7:run (default-cli) @ EmployeeManagementSystem ---
+[INFO] [en3.ContainerRunMojo] Resolved container artifact org.codehaus.cargo:cargo-core-container-tomcat:jar:1.10.7 for container tomcat10x
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.669 s
+[INFO] Finished at: 2026-03-03T08:46:30+02:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.codehaus.cargo:cargo-maven3-plugin:1.10.7:run (default-cli) on project EmployeeManagementSystem: Execution default-cli of goal org.codehaus.cargo:cargo-maven3-plugin:1.10.7:run failed: Failed to create deployable with implementation class org.codehaus.cargo.container.tomcat.TomcatWAR for the parameters (container [id = [tomcat10x]], deployable type [war]). InvocationTargetException: Failed to parse Tomcat WAR file in [C:\Users\HP\Downloads\Folders\Documents\CODES\Lectures\JAVA\Employee_management\target\ems.war]: Failed to find file [C:\Users\HP\Downloads\Folders\Documents\CODES\Lectures\JAVA\Employee_management\target\ems.war]: C:\Users\HP\Downloads\Folders\Documents\CODES\Lectures\JAVA\Employee_management\target\ems.war (The system cannot find the path specified) -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/PluginExecutionException
