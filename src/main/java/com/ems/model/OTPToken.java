@@ -1,16 +1,24 @@
 package com.ems.model;
 
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.sql.Timestamp;
 
+@Entity
+@Table(name = "otp_tokens")
 public class OTPToken {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int otpId;
+
     private int userId;
     private String otpCode;
     private Timestamp expiryTime;
     private int attempts;
     private boolean isUsed;
 
-    // Getters and Setters
     public int getOtpId() { return otpId; }
     public void setOtpId(int otpId) { this.otpId = otpId; }
     public int getUserId() { return userId; }
@@ -24,4 +32,6 @@ public class OTPToken {
     public boolean isUsed() { return isUsed; }
     public void setUsed(boolean used) { isUsed = used; }
 }
+
+
 

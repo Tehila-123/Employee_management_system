@@ -15,7 +15,7 @@
             <div class="dashboard-container">
                 <!-- Sidebar -->
                 <aside class="sidebar">
-                    <div class="sidebar-header">EMS PRO</div>
+                    <div class="sidebar-header">StaffEase</div>
                     <nav>
                         <a href="${pageContext.request.contextPath}/dashboard" class="nav-item active">Dashboard</a>
                         <a href="${pageContext.request.contextPath}/employees" class="nav-item">Employees</a>
@@ -41,11 +41,11 @@
                     <div class="stats-grid">
                         <div class="stat-card">
                             <h3>Total Employees</h3>
-                            <div class="value">${totalEmployees}</div>
+                            <div class="value" id="totalEmployeesValue">${totalEmployees}</div>
                         </div>
                         <div class="stat-card">
                             <h3>Active Employees</h3>
-                            <div class="value">${totalEmployees}</div>
+                            <div class="value" id="activeEmployeesValue">${activeEmployees}</div>
                         </div>
 
                     </div>
@@ -68,56 +68,97 @@
             </div>
 
             <script>
-                // Department Chart
-                const deptCtx = document.getElementById('deptChart').getContext('2d');
-                new Chart(deptCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ${ deptLabels },
-                    datasets: [{
-                        data: ${ deptData },
-                    backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
-                        }]
-                    },
-                    options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-                });
+                // Initial variables for charts reference
+                let deptChart, salaryChart;
 
-                // Salary Chart
-                const salaryCtx = document.getElementById('salaryChart').getContext('2d');
-                new Chart(salaryCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: ${ salaryLabels },
-                    datasets: [{
-                        label: 'Avg Salary',
-                        data: ${ salaryData },
-                    backgroundColor: '#10B981',
-                    borderRadius: 4
-                        }]
-                    },
-                    options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
+                // Auto-update function
+                function updateDashboard() {
+                    console.log('Fetching dashboard updates...');
+                    fetch('${pageContext.request.contextPath}/dashboard', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
                         }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Dashboard data received:', data);
+                        document.getElementById('totalEmployeesValue').innerText = data.totalEmployees;
+                        document.getElementById('activeEmployeesValue').innerText = data.activeEmployees;
+                        
+                        // Update charts if data changed
+                        if (deptChart && data.deptLabels && data.deptData) {
+                            deptChart.data.labels = data.deptLabels;
+                            deptChart.data.datasets[0].data = data.deptData;
+                            deptChart.update();
                         }
-                    }
+                        
+                        if (salaryChart && data.salaryLabels && data.salaryData) {
+                            salaryChart.data.labels = data.salaryLabels;
+                            salaryChart.data.datasets[0].data = data.salaryData;
+                            salaryChart.update();
+                        }
+                    })
+                    .catch(error => console.error('Error updating dashboard:', error));
                 }
-                });
+                
+                // Redefine chart creation to store in variables
+                window.onload = function() {
+                    const deptCtx = document.getElementById('deptChart').getContext('2d');
+                    const salaryCtx = document.getElementById('salaryChart').getContext('2d');
+
+                    deptChart = new Chart(deptCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ${deptLabels},
+                            datasets: [{
+                                data: ${deptData},
+                                backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    });
+
+                    salaryChart = new Chart(salaryCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: ${salaryLabels},
+                            datasets: [{
+                                label: 'Avg Salary',
+                                data: ${salaryData},
+                                backgroundColor: '#10B981',
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            }
+                        }
+                    });
+
+                    // Start polling every 30 seconds
+                    setInterval(updateDashboard, 30000);
+                };
             </script>
         </body>
 

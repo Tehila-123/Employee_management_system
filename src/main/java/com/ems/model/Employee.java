@@ -1,14 +1,26 @@
 package com.ems.model;
 
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.sql.Date;
 
+@Entity
+@Table(name = "employees")
 public class Employee {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int empId;
+
     private int userId;
     private String firstName;
     private String lastName;
     private Integer deptId;
+
+    @Transient
     private String deptName;
+
     private String status;
     private String profilePicPath;
     private Date hireDate;
@@ -17,7 +29,6 @@ public class Employee {
     private String email;
     private String phone;
 
-    // Getters and Setters
     public int getEmpId() { return empId; }
     public void setEmpId(int empId) { this.empId = empId; }
     public int getUserId() { return userId; }
@@ -45,4 +56,6 @@ public class Employee {
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
 }
+
+
 

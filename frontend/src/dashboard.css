@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/* ── Dark mode via .dark class on <html> ── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Date input dark mode fix ── */
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}

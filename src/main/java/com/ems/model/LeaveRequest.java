@@ -1,22 +1,37 @@
 package com.ems.model;
 
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.sql.Date;
 import java.sql.Timestamp;
 
+@Entity
+@Table(name = "leave_requests")
 public class LeaveRequest {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int leaveId;
+
     private int empId;
+
+    @Transient
     private String empName; // Helper
+
     private String leaveType;
     private Date startDate;
     private Date endDate;
     private String reason;
     private String status;
     private int approvedBy;
+
+    @Transient
     private String approverName; // Helper
+
+    @Column(updatable = false)
     private Timestamp createdAt;
 
-    // Getters and Setters
     public int getLeaveId() { return leaveId; }
     public void setLeaveId(int leaveId) { this.leaveId = leaveId; }
     public int getEmpId() { return empId; }
@@ -39,5 +54,12 @@ public class LeaveRequest {
     public void setApproverName(String approverName) { this.approverName = approverName; }
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = new Timestamp(System.currentTimeMillis());
+    }
 }
+
 

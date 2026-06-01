@@ -1,17 +1,30 @@
 package com.ems.model;
 
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.sql.Timestamp;
 
+@Entity
+@Table(name = "audit_logs")
 public class AuditLog {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int logId;
+
     private int userId;
+
+    @Transient
     private String userEmail;
+
     private String action;
     private String description;
     private String ipAddress;
+
+    @Column(updatable = false)
     private Timestamp timestamp;
 
-    // Getters and Setters
     public int getLogId() { return logId; }
     public void setLogId(int logId) { this.logId = logId; }
     public int getUserId() { return userId; }
@@ -26,5 +39,12 @@ public class AuditLog {
     public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
     public Timestamp getTimestamp() { return timestamp; }
     public void setTimestamp(Timestamp timestamp) { this.timestamp = timestamp; }
+
+
+    @PrePersist
+    protected void onCreate() {
+        timestamp = new Timestamp(System.currentTimeMillis());
+    }
 }
+
 

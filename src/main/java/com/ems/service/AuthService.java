@@ -1,116 +1,138 @@
 package com.ems.service;
 
-import com.ems.dao.AuditLogDAO;
-import com.ems.dao.OTPDAO;
-import com.ems.dao.UserDAO;
+import com.ems.model.AuditLog;
 import com.ems.model.OTPToken;
 import com.ems.model.User;
-import com.ems.util.EmailUtil;
-import com.ems.util.SecurityUtil;
-import java.sql.SQLException;
+import com.ems.repository.AuditLogRepository;
+import com.ems.repository.OTPTokenRepository;
+import com.ems.repository.UserRepository;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
 import java.sql.Timestamp;
 import java.util.Optional;
+import java.util.Random;
 
+@Service
 public class AuthService {
-    private final UserDAO userDAO;
-    private final OTPDAO otpDAO;
-    private final AuditLogDAO auditLogDAO;
-    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger
-            .getLogger(AuthService.class.getName());
 
-    public AuthService(UserDAO userDAO, OTPDAO otpDAO, AuditLogDAO auditLogDAO) {
-        this.userDAO = userDAO;
-        this.otpDAO = otpDAO;
-        this.auditLogDAO = auditLogDAO;
-    }
+    @Autowired
+    private UserRepository userRepository;
 
-    public Optional<User> authenticate(String email, String password, String ipAddress) throws SQLException {
-        Optional<User> userOpt = userDAO.getUserByEmail(email);
+    @Autowired
+    private OTPTokenRepository otpTokenRepository;
 
-        if (!userOpt.isPresent()) {
-            auditLogDAO.createLog(0, "LOGIN_FAILED", "Invalid email: " + email, ipAddress);
+    @Autowired
+    private AuditLogRepository auditLogRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JavaMailSender mailSender;
+
+    public Optional<User> authenticate(String email, String password, String ipAddress) {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+
+        if (userOpt.isEmpty()) {
+            logAction(0, "LOGIN_FAILED", "Invalid email: " + email, ipAddress);
             return Optional.empty();
         }
 
         User user = userOpt.get();
 
         if (user.isLocked()) {
-            auditLogDAO.createLog(user.getUserId(), "LOGIN_LOCKED", "Locked account attempt", ipAddress);
-            return Optional.of(user); // Still return to show locked state
+            logAction(user.getUserId(), "LOGIN_LOCKED", "Locked account attempt", ipAddress);
+            return Optional.of(user);
         }
 
-        if (SecurityUtil.checkPassword(password, user.getPasswordHash())) {
-            userDAO.resetFailedAttempts(user.getUserId());
-            auditLogDAO.createLog(user.getUserId(), "LOGIN_STEP1_SUCCESS", "Password verification successful",
-                    ipAddress);
+        if (passwordEncoder.matches(password, user.getPasswordHash())) {
+            user.setFailedLoginAttempts(0);
+            userRepository.save(user);
+            logAction(user.getUserId(), "LOGIN_STEP1_SUCCESS", "Password verification successful", ipAddress);
             return Optional.of(user);
         } else {
             int attempts = user.getFailedLoginAttempts() + 1;
-            userDAO.updateFailedAttempts(user.getUserId(), attempts);
+            user.setFailedLoginAttempts(attempts);
             if (attempts >= 5) {
-                userDAO.lockAccount(user.getUserId());
-                auditLogDAO.createLog(user.getUserId(), "ACCOUNT_LOCKED", "5 failed attempts", ipAddress);
+                user.setLocked(true);
+                logAction(user.getUserId(), "ACCOUNT_LOCKED", "5 failed attempts", ipAddress);
             }
-            auditLogDAO.createLog(user.getUserId(), "LOGIN_FAILED", "Invalid password", ipAddress);
+            userRepository.save(user);
+            logAction(user.getUserId(), "LOGIN_FAILED", "Invalid password", ipAddress);
             return Optional.empty();
         }
     }
 
-    public void generateAndSendOTP(User user) throws SQLException {
-        String code = SecurityUtil.generateOTP();
+    @Transactional
+    public void generateAndSendOTP(User user) {
+        String code = String.format("%06d", new Random().nextInt(999999));
         OTPToken token = new OTPToken();
         token.setUserId(user.getUserId());
         token.setOtpCode(code);
-        // Expiry in 60 minutes for troubleshooting timezone issues
-        token.setExpiryTime(new Timestamp(System.currentTimeMillis() + 60 * 60 * 1000));
+        token.setExpiryTime(new Timestamp(System.currentTimeMillis() + 5 * 60 * 1000)); // 5 minutes
+        token.setAttempts(0);
+        token.setUsed(false);
 
-        otpDAO.createToken(token);
-        LOGGER.info(
-                "OTP generated and stored for userId: " + user.getUserId() + ". Sending email to: " + user.getEmail());
-        EmailUtil.sendOTP(user.getEmail(), code);
+        otpTokenRepository.save(token);
+        sendEmail(user.getEmail(), "Your OTP Code", "Your OTP code is: " + code);
     }
 
-    public boolean verifyOTP(int userId, String code, String ipAddress) throws SQLException {
-        LOGGER.info("Verifying OTP for userId: " + userId + " with code: " + code);
-        Optional<OTPToken> tokenOpt = otpDAO.getLatestToken(userId);
+    @Transactional
+    public boolean verifyOTP(int userId, String code, String ipAddress) {
+        Optional<OTPToken> tokenOpt = otpTokenRepository.findTopByUserIdAndIsUsedFalseOrderByExpiryTimeDesc(userId);
 
-        if (!tokenOpt.isPresent()) {
-            LOGGER.warning("No active OTP token found for userId: " + userId);
-            return false;
-        }
+        if (tokenOpt.isEmpty()) return false;
 
         OTPToken token = tokenOpt.get();
-        LOGGER.info("Latest token found: " + token.getOtpCode() + ", Expiry: " + token.getExpiryTime() + ", Used: "
-                + token.isUsed());
 
-        Timestamp now = new Timestamp(System.currentTimeMillis());
-        if (token.getExpiryTime().before(now)) {
-            LOGGER.warning(
-                    "OTP token expired for userId: " + userId + ". Expiry: " + token.getExpiryTime() + ", Now: " + now);
-            return false;
-        }
-
-        if (token.isUsed()) {
-            LOGGER.warning("OTP token already used for userId: " + userId);
-            return false;
-        }
-
-        if (token.getAttempts() >= 3) {
-            LOGGER.warning("Too many attempts for OTP token in userId: " + userId);
-            return false;
-        }
+        if (token.getExpiryTime().before(new Timestamp(System.currentTimeMillis()))) return false;
+        if (token.getAttempts() >= 3) return false;
 
         if (token.getOtpCode().equals(code)) {
-            otpDAO.markAsUsed(token.getOtpId());
-            auditLogDAO.createLog(userId, "LOGIN_SUCCESS", "2FA verification successful", ipAddress);
-            LOGGER.info("OTP verification successful for userId: " + userId);
+            token.setUsed(true);
+            otpTokenRepository.save(token);
+            logAction(userId, "LOGIN_SUCCESS", "2FA verification successful", ipAddress);
             return true;
         } else {
-            otpDAO.incrementAttempts(token.getOtpId());
-            auditLogDAO.createLog(userId, "2FA_FAILED", "Invalid OTP attempt", ipAddress);
-            LOGGER.warning("Invalid OTP attempt for userId: " + userId + ". Expected: " + token.getOtpCode() + ", Got: "
-                    + code);
+            token.setAttempts(token.getAttempts() + 1);
+            otpTokenRepository.save(token);
+            logAction(userId, "2FA_FAILED", "Invalid OTP attempt", ipAddress);
             return false;
         }
     }
+
+    public User getUserById(int userId) {
+        return userRepository.findById(userId).orElse(null);
+    }
+
+    @Transactional
+    public User register(User user) {
+        user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
+        user.setLocked(false);
+        user.setFailedLoginAttempts(0);
+        return userRepository.save(user);
+    }
+
+    private void logAction(int userId, String action, String description, String ipAddress) {
+        AuditLog log = new AuditLog();
+        log.setUserId(userId);
+        log.setAction(action);
+        log.setDescription(description);
+        log.setIpAddress(ipAddress);
+        auditLogRepository.save(log);
+    }
+
+    private void sendEmail(String to, String subject, String body) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject(subject);
+        message.setText(body);
+        mailSender.send(message);
+    }
 }
+

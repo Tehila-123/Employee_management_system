@@ -87,3 +87,14 @@ CREATE TABLE audit_logs (
 CREATE INDEX idx_user_email ON users(email);
 CREATE INDEX idx_employee_dept ON employees(dept_id);
 CREATE INDEX idx_leave_status ON leave_requests(status);
+
+-- Stored Routine
+CREATE OR REPLACE FUNCTION get_employee_count_by_dept(p_dept_id INT)
+RETURNS INT AS $$
+DECLARE
+    emp_count INT;
+BEGIN
+    SELECT COUNT(*) INTO emp_count FROM employees WHERE dept_id = p_dept_id;
+    RETURN emp_count;
+END;
+$$ LANGUAGE plpgsql;

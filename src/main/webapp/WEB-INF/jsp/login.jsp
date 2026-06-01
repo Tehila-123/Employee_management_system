@@ -6,7 +6,7 @@
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Login - EMS</title>
+            <title>Login - StaffEase</title>
             <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/style.css">
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
             <script src="https://www.google.com/recaptcha/api.js" async defer></script>

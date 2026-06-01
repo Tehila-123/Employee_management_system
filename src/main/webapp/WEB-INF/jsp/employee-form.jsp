@@ -13,7 +13,7 @@
         <body>
             <div class="dashboard-container">
                 <aside class="sidebar">
-                    <div class="sidebar-header">EMS PRO</div>
+                    <div class="sidebar-header">StaffEase</div>
                     <nav>
                         <a href="${pageContext.request.contextPath}/dashboard" class="nav-item">Dashboard</a>
                         <a href="${pageContext.request.contextPath}/employees" class="nav-item active">Employees</a>
